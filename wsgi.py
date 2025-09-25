@@ -2,7 +2,7 @@ import click, pytest, sys
 from flask.cli import with_appcontext, AppGroup
 
 from App.database import db, get_migrate
-from App.models import User
+from App.models import User, Admin, Staff, Shift, Roster, AttendanceRecord, ShiftReport
 from App.main import create_app
 from App.controllers import ( create_user, get_all_users_json, get_all_users, initialize )
 
@@ -12,57 +12,45 @@ from App.controllers import ( create_user, get_all_users_json, get_all_users, in
 app = create_app()
 migrate = get_migrate(app)
 
-# This command creates and initializes the database
-@app.cli.command("init", help="Creates and initializes the database")
-def init():
-    initialize()
-    print('database intialized')
+# --- CLI Group ---
 
-'''
-User Commands
-'''
 
-# Commands can be organized using groups
+@cli.command("init-db")
+@with_appcontext
+def init_db():
+    db.drop_all()
+    db.create_all()
+    click.echo("Database initialized!")
 
-# create a group, it would be the first argument of the comand
-# eg : flask user <command>
-user_cli = AppGroup('user', help='User object commands') 
+@cli.command("create-admin")
+@with_appcontext
+@click.argument("username")
+@click.argument("email")
+@click.argument("password")
+def create_admin(username, email, password):
+    admin = Admin(username=username, email=email, password=password)
+    db.session.add(admin)
+    db.session.commit()
+    click.echo(f"Admin {username} created.")
 
-# Then define the command and any parameters and annotate it with the group (@)
-@user_cli.command("create", help="Creates a user")
-@click.argument("username", default="rob")
-@click.argument("password", default="robpass")
-def create_user_command(username, password):
-    create_user(username, password)
-    print(f'{username} created!')
+@cli.command("create-staff")
+@with_appcontext
+@click.argument("username")
+@click.argument("email")
+@click.argument("password")
+@click.argument("role")
+def create_staff(username, email, password, role):
+    staff = Staff(username=username, email=email, password=password, role=role)
+    db.session.add(staff)
+    db.session.commit()
+    click.echo(f"Staff {username} with role {role} created.")
 
-# this command will be : flask user create bob bobpass
+@cli.command("list-staff")
+@with_appcontext
+def list_staff():
+    staff_members = Staff.query.all()
+    for s in staff_members:
+        click.echo(f"{s.userId} - {s.username} ({s.role})")
 
-@user_cli.command("list", help="Lists users in the database")
-@click.argument("format", default="string")
-def list_user_command(format):
-    if format == 'string':
-        print(get_all_users())
-    else:
-        print(get_all_users_json())
-
-app.cli.add_command(user_cli) # add the group to the cli
-
-'''
-Test Commands
-'''
-
-test = AppGroup('test', help='Testing commands') 
-
-@test.command("user", help="Run User tests")
-@click.argument("type", default="all")
-def user_tests_command(type):
-    if type == "unit":
-        sys.exit(pytest.main(["-k", "UserUnitTests"]))
-    elif type == "int":
-        sys.exit(pytest.main(["-k", "UserIntegrationTests"]))
-    else:
-        sys.exit(pytest.main(["-k", "App"]))
-    
-
-app.cli.add_command(test)
+# register CLI group
+app.cli.add_command(cli)
