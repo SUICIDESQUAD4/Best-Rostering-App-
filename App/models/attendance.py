@@ -3,27 +3,24 @@ from App.database import db
 class AttendanceRecord(db.Model):
     __tablename__ = "attendance_records"
     recordId = db.Column(db.Integer, primary_key=True)
-    staffId = db.Column(db.Integer, db.ForeignKey("staff.userId"), nullable=False)
-    shiftId = db.Column(db.Integer, db.ForeignKey("shifts.shiftId"), nullable=False)
-    timeIn = db.Column(db.DateTime, nullable=True)
-    timeOut = db.Column(db.DateTime, nullable=True)
+    staffId = db.Column(db.Integer, db.ForeignKey("staff.userId"))
+    shiftId = db.Column(db.Integer, db.ForeignKey("shifts.shiftId"))
+    timeIn = db.Column(db.DateTime)
+    timeOut = db.Column(db.DateTime)
 
-    @classmethod
-    def get_or_create(cls, staff_id, shift_id):
-        rec = cls.query.filter_by(staffId=staff_id, shiftId=shift_id).first()
-        if not rec:
-            rec = cls(staffId=staff_id, shiftId=shift_id)
-            db.session.add(rec)
+    @staticmethod
+    def get_or_create(staff_id, shift_id):
+        record = AttendanceRecord.query.filter_by(staffId=staff_id, shiftId=shift_id).first()
+        if not record:
+            record = AttendanceRecord(staffId=staff_id, shiftId=shift_id)
+            db.session.add(record)
             db.session.commit()
-        return rec
+        return record
 
     def markTimeIn(self, ts):
         self.timeIn = ts
-        db.session.add(self)
         db.session.commit()
 
     def markTimeOut(self, ts):
         self.timeOut = ts
-        db.session.add(self)
         db.session.commit()
-
