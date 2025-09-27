@@ -1,15 +1,18 @@
 from App.database import db
+from datetime import datetime
 
 class Shift(db.Model):
     __tablename__ = "shifts"
     shiftId = db.Column(db.Integer, primary_key=True)
+    rosterId = db.Column(db.Integer, db.ForeignKey("rosters.rosterId"), nullable=False)
+    staffId = db.Column(db.Integer, db.ForeignKey("staff.userId"), nullable=True)
     startTime = db.Column(db.DateTime, nullable=False)
     endTime = db.Column(db.DateTime, nullable=False)
-    staffId = db.Column(db.Integer, db.ForeignKey("staff.userId"))
 
     def assignStaff(self, staff):
         self.staffId = staff.userId
-        return f"Assigned {staff.username} to shift {self.shiftId}"
+        db.session.add(self)
+        db.session.commit()
 
-    def getDuration(self):
-        return (self.endTime - self.startTime).seconds // 3600
+    def getDurationHours(self):
+        return (self.endTime - self.startTime).total_seconds() / 3600.0

@@ -1,17 +1,12 @@
-from App.database import db
 from App.models.user import User
+from App.database import db
 
 class Staff(User):
     __tablename__ = "staff"
     userId = db.Column(db.Integer, db.ForeignKey("users.userId"), primary_key=True)
-    role = db.Column(db.String(50))
+    role = db.Column(db.String(100), nullable=True)
 
-    __mapper_args__ = {
-        "polymorphic_identity": "staff",
-    }
+    __mapper_args__ = {"polymorphic_identity": "staff"}
 
-    def timeIn(self, shift):
-        return f"{self.username} clocked in at {shift.startTime}"
-
-    def timeOut(self, shift):
-        return f"{self.username} clocked out at {shift.endTime}"
+    def __repr__(self):
+        return f"<Staff {self.userId} {self.username}>"
