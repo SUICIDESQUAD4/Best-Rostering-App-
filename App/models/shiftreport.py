@@ -6,7 +6,7 @@ class ShiftReport(db.Model):
     rosterId = db.Column(db.Integer, db.ForeignKey("rosters.rosterId"))
     weekStartDate = db.Column(db.Date, nullable=False)
     weekEndDate = db.Column(db.Date, nullable=False)
-    summary = db.Column(db.String(500))
+    summary = db.Column(db.String(5000))
 
     def generateReport(self, roster, attendance):
         staff_count = len({a.staffId for a in attendance})
