@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/protect.js') }}"></script>
+</head>
+<body>
+  <header>
+    <h1>Welcome, {{ user.username }} (Admin)</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <main>
+    <h2>Manage Staff</h2>
+    <div id="staff-list"></div>
+    <button onclick="loadStaff()">Refresh List</button>
+
+    <h2>Reports</h2>
+    <button onclick="generateReport()">View Shift Report</button>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('jwt');
+
+    function loadStaff(){
+      fetch('/api/v1/staff', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(data => {
+        const listDiv = document.getElementById('staff-list');
+        listDiv.innerHTML = data.map(s => `<p>${s.userId}: ${s.username} - ${s.role}</p>`).join('');
+      });
+    }
+
+    function generateReport(){
+      alert("Shift report feature can be expanded here.");
+    }
+
+    function logout(){
+      localStorage.removeItem('jwt');
+      window.location.href = "/";
+    }
+
+    loadStaff();
+  </script>
+</body>
+</html>

@@ -1,41 +1,76 @@
+# App/main.py
 import os
-from flask import Flask, render_template
-from flask_uploads import DOCUMENTS, IMAGES, TEXT, UploadSet, configure_uploads
+from flask import Flask, jsonify
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
-from werkzeug.datastructures import  FileStorage
+from flask_jwt_extended import JWTManager
 
 from App.database import init_db
 from App.config import load_config
 
+# Blueprints (Views)
+from App.views.auth_views import auth_bp
+from App.views.staff_views import staff_bp
+from App.views.index import index_views  # NEW landing page
 
-from App.controllers import (
-    setup_jwt,
-    add_auth_context
-)
+def create_app(overrides: dict = None):
+    """
+    Application factory for Rostering App.
+    Handles config, DB init, JWT setup, and blueprint registration.
+    """
+    app = Flask(__name__, static_url_path="/static", template_folder="templates")
 
-from App.views import views, setup_admin
+    if overrides is None:
+        overrides = {}
 
-
-
-def add_views(app):
-    for view in views:
-        app.register_blueprint(view)
-
-def create_app(overrides={}):
-    app = Flask(__name__, static_url_path='/static')
+    # Load config and enable CORS
     load_config(app, overrides)
     CORS(app)
-    add_auth_context(app)
-    photos = UploadSet('photos', TEXT + DOCUMENTS + IMAGES)
-    configure_uploads(app, photos)
-    add_views(app)
+
+    # Initialize database
     init_db(app)
-    jwt = setup_jwt(app)
-    setup_admin(app)
-    @jwt.invalid_token_loader
-    @jwt.unauthorized_loader
-    def custom_unauthorized_response(error):
-        return render_template('401.html', error=error), 401
-    app.app_context().push()
+
+    # ----------------------------
+    # JWT Authentication
+    # ----------------------------
+    jwt = JWTManager(app)
+
+    @jwt.user_identity_loader
+    def user_identity_lookup(identity):
+        """Define how to serialize user identity into the JWT."""
+        try:
+            return str(identity.userId)
+        except Exception:
+            return str(identity)
+
+    from App.models.user import User
+    from App.database import db
+
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        """Define how to get user object from identity in JWT."""
+        identity = jwt_data["sub"]
+        try:
+            user_id = int(identity)
+        except (TypeError, ValueError):
+            return None
+        return db.session.get(User, user_id)
+
+    # ----------------------------
+    # Register Blueprints
+    # ----------------------------
+    # Landing page UI (root)
+    app.register_blueprint(index_views)
+
+    # API routes
+    app.register_blueprint(auth_bp, url_prefix="/api/v1")
+    app.register_blueprint(staff_bp, url_prefix="/api/v1")
+
+    # ----------------------------
+    # Health Check Route
+    # ----------------------------
+    @app.route("/health")
+    def health():
+        """Basic health check endpoint."""
+        return jsonify({"status": "ok"}), 200
+
     return app

@@ -1,10 +1,8 @@
-# blue prints are imported 
-# explicitly instead of using *
-from .user import user_views
-from .index import index_views
-from .auth import auth_views
-from .admin import setup_admin
+# App/views/__init__.py
+# Import only the blueprints you actually use
+from .auth_views import auth_bp
+from .staff_views import staff_bp
+from .index import index_views  # NEW landing page view
 
-
-views = [user_views, index_views, auth_views] 
-# blueprints must be added to this list
+# This list is optional but keeps things organized
+__all__ = ["auth_bp", "staff_bp", "index_views"]
