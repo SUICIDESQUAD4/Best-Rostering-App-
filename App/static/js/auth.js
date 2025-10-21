@@ -1,29 +1,42 @@
-document.getElementById("login-btn").addEventListener("click", async () => {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const role = document.getElementById("role").value;
-  const errorMsg = document.getElementById("error-msg");
+document.addEventListener("DOMContentLoaded", function () {
+  const loginForm = document.getElementById("login-form");
+  if (!loginForm) return;
 
-  if (!username || !password) {
-    errorMsg.textContent = "Username and password required.";
-    return;
-  }
+  loginForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-  const res = await fetch("/api/v1/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const userType = document.querySelector('input[name="userType"]:checked')?.value;
 
-  const data = await res.json();
-  if (res.ok && data.access_token) {
-    localStorage.setItem("jwt", data.access_token);
-    if (role === "admin") {
-      window.location.href = "/admin/dashboard";
-    } else {
-      window.location.href = "/staff/dashboard";
+    try {
+      const response = await fetch("/api/v1/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.access_token) {
+        // store the token
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("userType", userType);
+
+        // redirect to appropriate dashboard
+        if (userType === "admin") {
+          window.location.href = "/admin/dashboard";
+        } else {
+          window.location.href = "/staff/dashboard";
+        }
+      } else {
+        alert(data.message || "Invalid credentials. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Login failed. Check your connection.");
     }
-  } else {
-    errorMsg.textContent = data.msg || "Login failed";
-  }
+  });
 });

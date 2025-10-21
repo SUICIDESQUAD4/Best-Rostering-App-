@@ -25,16 +25,30 @@
   </main>
 
   <script>
-    const token = localStorage.getItem('jwt');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = "/";
+    }
+
+    // Fetch roster for logged-in staff
     fetch('/api/v1/staff/roster', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.json())
+    .then(res => {
+      if (res.status === 401) {
+        logout();
+      }
+      return res.json();
+    })
     .then(data => {
       const rosterDiv = document.getElementById('roster');
-      rosterDiv.innerHTML = data.map(s => 
-        `<p>Shift ${s.shiftId}: ${s.startTime} - ${s.endTime}</p>`
-      ).join('');
+      if (Array.isArray(data) && data.length > 0) {
+        rosterDiv.innerHTML = data.map(s => 
+          `<p>Shift ${s.shiftId}: ${s.startTime} - ${s.endTime}</p>`
+        ).join('');
+      } else {
+        rosterDiv.innerHTML = "<p>No shifts found.</p>";
+      }
     });
 
     function timeIn(){
@@ -42,7 +56,9 @@
       fetch(`/api/v1/shifts/${shiftId}/time-in`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()).then(alert);
+      })
+      .then(res => res.json())
+      .then(data => alert(data.message || "Time in recorded."));
     }
 
     function timeOut(){
@@ -50,13 +66,19 @@
       fetch(`/api/v1/shifts/${shiftId}/time-out`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()).then(alert);
+      })
+      .then(res => res.json())
+      .then(data => alert(data.message || "Time out recorded."));
     }
 
     function logout(){
-      localStorage.removeItem('jwt');
+      localStorage.removeItem('token');
+      localStorage.removeItem('userType');
       window.location.href = "/";
     }
   </script>
+
+  <script defer src="{{ url_for('static', filename='js/protect.js') }}"></script>
+
 </body>
 </html>

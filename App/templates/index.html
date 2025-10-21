@@ -1,25 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Rostering App - Login</title>
+  <meta charset="UTF-8" />
+  <title>Login</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <script defer src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </head>
 <body>
   <div class="login-container">
-    <h1>Rostering App</h1>
-    <div>
-      <label for="role">Sign in as:</label>
+    <h1>Rostering App Login</h1>
+    <form id="loginForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" required>
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" required>
+
+      <label for="role">Login as:</label>
       <select id="role">
         <option value="staff">Staff</option>
         <option value="admin">Admin</option>
       </select>
-    </div>
-    <input type="text" id="username" placeholder="Username" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="login-btn">Login</button>
-    <p id="error-msg" style="color:red;"></p>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <p id="errorMsg" style="color:red;"></p>
   </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorMsg = document.getElementById('errorMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const role = document.getElementById('role').value;
+
+      const res = await fetch('/api/v1/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role })
+      });
+
+      if (res.status !== 200) {
+        errorMsg.textContent = 'Invalid credentials or role.';
+        return;
+      }
+
+      const data = await res.json();
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('userType', data.type);
+
+      // Redirect to correct dashboard
+      if (data.type === 'admin') {
+        window.location.href = '/admin/dashboard';
+      } else {
+        window.location.href = '/staff/dashboard';
+      }
+    });
+  </script>
 </body>
 </html>

@@ -29,11 +29,12 @@ class User(db.Model):
         if not self.passwordHash:
             return False
         return check_password_hash(self.passwordHash, raw_password)
-
-    def to_dict(self):
+    def get_json(self):
+        """Return a dictionary representation of the user."""
         return {
             "userId": self.userId,
             "username": self.username,
             "email": self.email,
             "type": self.type
         }
+

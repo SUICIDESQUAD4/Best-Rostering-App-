@@ -1,8 +1,9 @@
 # App/main.py
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
+from App.models.user import User
 
 from App.database import init_db
 from App.config import load_config
@@ -10,7 +11,7 @@ from App.config import load_config
 # Blueprints (Views)
 from App.views.auth_views import auth_bp
 from App.views.staff_views import staff_bp
-from App.views.index import index_views  # NEW landing page
+from App.views.index import index_views
 
 def create_app(overrides: dict = None):
     """
@@ -22,7 +23,7 @@ def create_app(overrides: dict = None):
     if overrides is None:
         overrides = {}
 
-    # Load config and enable CORS
+    # Load config
     load_config(app, overrides)
     CORS(app)
 
@@ -30,24 +31,26 @@ def create_app(overrides: dict = None):
     init_db(app)
 
     # ----------------------------
-    # JWT Authentication
+    # JWT Authentication Config
     # ----------------------------
+    app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+    app.config['JWT_ACCESS_COOKIE_NAME'] = 'access_token_cookie'
+    app.config['JWT_COOKIE_SECURE'] = False
+    app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+
     jwt = JWTManager(app)
 
     @jwt.user_identity_loader
     def user_identity_lookup(identity):
-        """Define how to serialize user identity into the JWT."""
         try:
             return str(identity.userId)
         except Exception:
             return str(identity)
 
-    from App.models.user import User
     from App.database import db
 
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
-        """Define how to get user object from identity in JWT."""
         identity = jwt_data["sub"]
         try:
             user_id = int(identity)
@@ -56,21 +59,46 @@ def create_app(overrides: dict = None):
         return db.session.get(User, user_id)
 
     # ----------------------------
-    # Register Blueprints
+    # Blueprints
     # ----------------------------
-    # Landing page UI (root)
     app.register_blueprint(index_views)
-
-    # API routes
     app.register_blueprint(auth_bp, url_prefix="/api/v1")
     app.register_blueprint(staff_bp, url_prefix="/api/v1")
 
     # ----------------------------
-    # Health Check Route
+    # Page Routes (Protected)
+    # ----------------------------
+    @app.route('/')
+    def index_page():
+        return render_template('index.html')
+
+    @app.route('/admin/dashboard')
+    @jwt_required()
+    def admin_dashboard_page():
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        if not user or user.type != "admin":
+            return render_template('index.html'), 302
+
+        return render_template('admin_dashboard.html', user=user)
+
+    @app.route('/staff/dashboard')
+    @jwt_required()
+    def staff_dashboard_page():
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        if not user or user.type != "staff":
+            return render_template('index.html'), 302
+
+        return render_template('staff_dashboard.html', user=user)
+
+    # ----------------------------
+    # Health Check
     # ----------------------------
     @app.route("/health")
     def health():
-        """Basic health check endpoint."""
         return jsonify({"status": "ok"}), 200
 
     return app
