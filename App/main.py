@@ -11,6 +11,7 @@ from App.config import load_config
 # Blueprints (Views)
 from App.views.auth_views import auth_bp
 from App.views.staff_views import staff_bp
+from App.views.admin_views import admin_bp
 from App.views.index import index_views
 
 def create_app(overrides: dict = None):
@@ -61,9 +62,11 @@ def create_app(overrides: dict = None):
     # ----------------------------
     # Blueprints
     # ----------------------------
+    
     app.register_blueprint(index_views)
-    app.register_blueprint(auth_bp, url_prefix="/api/v1")
-    app.register_blueprint(staff_bp, url_prefix="/api/v1")
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(staff_bp)
+    app.register_blueprint(admin_bp)
 
     # ----------------------------
     # Page Routes (Protected)
