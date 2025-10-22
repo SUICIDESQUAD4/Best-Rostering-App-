@@ -1,7 +1,9 @@
 import click
 from flask.cli import AppGroup, with_appcontext
 from datetime import datetime, date, timedelta
+import random
 
+from App.controllers import auth_controller, staff_controller
 from App.main import create_app
 from App.database import db
 
@@ -22,21 +24,16 @@ system_cli = AppGroup("system", help="System maintenance commands")
 admin_cli = AppGroup("admin", help="Admin commands for managing staff and shifts")
 staff_cli = AppGroup("staff", help="Staff commands for viewing roster and attendance")
 
-
 # ---------- Helper functions ----------
 def parse_dt(dt_str):
     """Parse datetime string (YYYY-MM-DDTHH:MM)."""
     return datetime.fromisoformat(dt_str)
 
-
 def parse_date(d_str):
     """Parse date string (YYYY-MM-DD)."""
     return date.fromisoformat(d_str)
 
-
 # ---------- SYSTEM COMMANDS ----------
-import random
-
 @system_cli.command("init-db")
 @with_appcontext
 def init_db():
@@ -44,67 +41,63 @@ def init_db():
     db.drop_all()
     db.create_all()
 
-    # Admins
-    admin1 = Admin(username="admin1", passwordHash="adminpass1", email="admin1@example.com", type="admin")
-    admin2 = Admin(username="admin2", passwordHash="adminpass2", email="admin2@example.com", type="admin")
+    # Admins (with hashed passwords)
+    admin1 = Admin(username="admin1", email="admin1@example.com", type="admin")
+    admin1.set_password("adminpass1")
+
+    admin2 = Admin(username="admin2", email="admin2@example.com", type="admin")
+    admin2.set_password("adminpass2")
 
     # Staff (6 total)
     staff_members = [
-        Staff(username="alice", passwordHash="alicepass", email="alice@example.com", role="Cashier", type="staff"),
-        Staff(username="bob", passwordHash="bobpass", email="bob@example.com", role="Cook", type="staff"),
-        Staff(username="carol", passwordHash="carolpass", email="carol@example.com", role="Waiter", type="staff"),
-        Staff(username="dave", passwordHash="davepass", email="dave@example.com", role="Cleaner", type="staff"),
-        Staff(username="eve", passwordHash="evepass", email="eve@example.com", role="Bartender", type="staff"),
-        Staff(username="frank", passwordHash="frankpass", email="frank@example.com", role="Security", type="staff"),
+        Staff(username="alice", email="alice@example.com", role="Cashier", type="staff"),
+        Staff(username="bob", email="bob@example.com", role="Cook", type="staff"),
+        Staff(username="carol", email="carol@example.com", role="Waiter", type="staff"),
+        Staff(username="dave", email="dave@example.com", role="Cleaner", type="staff"),
+        Staff(username="eve", email="eve@example.com", role="Bartender", type="staff"),
+        Staff(username="frank", email="frank@example.com", role="Security", type="staff"),
     ]
+    default_staff_password = {
+        "alice": "alicepass",
+        "bob": "bobpass",
+        "carol": "carolpass",
+        "dave": "davepass",
+        "eve": "evepass",
+        "frank": "frankpass"
+    }
+    for s in staff_members:
+        s.set_password(default_staff_password[s.username])
 
     db.session.add_all([admin1, admin2] + staff_members)
     db.session.commit()
 
-    # Create 5 rosters (current week + 4 past weeks)
+    # Create 5 rosters
     today = date.today()
     current_week_start = today - timedelta(days=today.weekday())
-
     all_rosters = []
     for i in range(5):
         week_start = current_week_start - timedelta(weeks=i)
-        roster = Roster(
-            weekStartDate=week_start,
-            weekEndDate=week_start + timedelta(days=6)
-        )
+        roster = Roster(weekStartDate=week_start, weekEndDate=week_start + timedelta(days=6))
         db.session.add(roster)
         all_rosters.append(roster)
     db.session.commit()
 
-    # Example Shifts & Attendance for each roster
+    # Shifts & Attendance
     all_shifts = []
     all_attendance = []
-
     for roster in all_rosters:
         for staff in staff_members:
-            # Random day of week (0=Mon, 6=Sun)
             day_offset = random.randint(0, 6)
-
-            # Random start hour between 8 AM and 2 PM
             start_hour = random.randint(8, 14)
-
             shift_start = datetime.combine(roster.weekStartDate, datetime.min.time()) + timedelta(days=day_offset, hours=start_hour)
             shift_end = shift_start + timedelta(hours=8)
 
-            shift = Shift(
-                rosterId=roster.rosterId,
-                staffId=staff.userId,
-                startTime=shift_start,
-                endTime=shift_end
-            )
+            shift = Shift(rosterId=roster.rosterId, staffId=staff.userId, startTime=shift_start, endTime=shift_end)
             db.session.add(shift)
-            db.session.commit()  # get shiftId
-
+            db.session.commit()
             all_shifts.append(shift)
 
-            # Attendance variations
             attendance_type = random.choice(["full", "late", "absent", "early_leave"])
-
             if attendance_type == "full":
                 time_in = shift_start + timedelta(minutes=random.randint(0, 10))
                 time_out = shift_end - timedelta(minutes=random.randint(0, 10))
@@ -114,38 +107,28 @@ def init_db():
             elif attendance_type == "early_leave":
                 time_in = shift_start + timedelta(minutes=random.randint(0, 10))
                 time_out = shift_end - timedelta(hours=random.randint(1, 3))
-            else:  # absent
+            else:
                 time_in = None
                 time_out = None
 
-            record = AttendanceRecord(
-                staffId=staff.userId,
-                shiftId=shift.shiftId,
-                timeIn=time_in,
-                timeOut=time_out
-            )
+            record = AttendanceRecord(staffId=staff.userId, shiftId=shift.shiftId, timeIn=time_in, timeOut=time_out)
             db.session.add(record)
             all_attendance.append(record)
-
     db.session.commit()
 
-    print("Database initialized with:")
-    print(" - 2 Admins")
-    print(" - 6 Staff")
+    print("✅ Database initialized with:")
+    print(" - 2 Admins (with hashed passwords)")
+    print(" - 6 Staff (with hashed passwords)")
     print(" - 5 Rosters (current + 4 past weeks)")
-    print(f" - {len(all_shifts)} Shifts (about 6 per week, randomized)")
+    print(f" - {len(all_shifts)} Shifts (randomized)")
     print(f" - {len(all_attendance)} Attendance Records (varied & randomized)")
-
-
-
 
 @system_cli.command("rollback-db")
 @with_appcontext
 def rollback_db():
     """Rollback uncommitted database changes."""
     db.session.rollback()
-    print("Rolled back uncommitted changes.")
-
+    print("🔁 Rolled back uncommitted changes.")
 
 # ---------- ADMIN COMMANDS ----------
 @admin_cli.command("add-staff")
@@ -157,249 +140,64 @@ def add_staff():
     password = input("Enter staff password: ")
     role = input("Enter staff role: ")
 
-    staff = Staff(username=username, passwordHash=password, email=email, role=role, type="staff")
+    staff = Staff(username=username, email=email, role=role, type="staff")
+    staff.set_password(password)
     db.session.add(staff)
     db.session.commit()
-    print(f"Added staff {staff.username} with ID {staff.userId}")
-
+    print(f"✅ Added staff {staff.username} with ID {staff.userId}")
 
 @admin_cli.command("delete-staff")
 @with_appcontext
 @click.argument("staff_id", type=int)
 def delete_staff(staff_id):
-    """Delete a staff member by ID."""
     staff = Staff.query.get(staff_id)
     if not staff:
-        print("Staff not found.")
+        print("⚠️ Staff not found.")
         return
     db.session.delete(staff)
     db.session.commit()
-    print(f"Deleted staff with ID {staff_id}")
-
+    print(f"🗑️ Deleted staff with ID {staff_id}")
 
 @admin_cli.command("list-staff")
 @with_appcontext
 def list_staff():
-    """List all staff members."""
     staff_members = Staff.query.all()
     if not staff_members:
-        print("No staff found.")
+        print("⚠️ No staff found.")
         return
     for s in staff_members:
         print(f"{s.userId}: {s.username} ({s.role})")
 
-
 @admin_cli.command("schedule-shift")
 @with_appcontext
-@click.option("--staff-id", type=int, help="Staff ID (optional). If omitted you will be prompted.")
-@click.option("--start", help="Start datetime (optional) - format: YYYY-MM-DDTHH:MM (e.g. 2025-09-29T09:00)")
-@click.option("--end", help="End datetime (optional) - format: YYYY-MM-DDTHH:MM (e.g. 2025-09-29T17:00)")
-@click.option("--week-start", default=None, help="Optional roster week-start date (YYYY-MM-DD). If omitted it will be derived.")
-def schedule_shift(staff_id, start, end, week_start):
-    """
-    Schedule shift(s) for a staff member.
-
-    Two modes:
-    1) Non-interactive:
-       flask admin schedule-shift --staff-id 2 --start 2025-09-29T09:00 --end 2025-09-29T17:00
-    2) Interactive (recommended when you want step-by-step input):
-       flask admin schedule-shift
-       - will prompt you for staff, then allow you to enter one or more shifts interactively.
-
-    Date/time format: YYYY-MM-DDTHH:MM (example: 2025-09-29T09:00)
-    Week-start format: YYYY-MM-DD (example: 2025-09-29)
-    """
-    # Helper for overlap check
-    def has_overlap(staff_id, new_start, new_end):
-        from sqlalchemy import and_, or_
-        # any existing shift for staff that overlaps the new shift?
-        existing = Shift.query.filter(Shift.staffId == staff_id).all()
-        for ex in existing:
-            if (new_start < ex.endTime) and (new_end > ex.startTime):
-                return ex
-        return None
-
-    # If staff_id not provided, show staff list and prompt the user
+@click.option("--staff-id", type=int, help="Staff ID")
+@click.option("--start", type=str, help="Start time (YYYY-MM-DDTHH:MM)")
+@click.option("--end", type=str, help="End time (YYYY-MM-DDTHH:MM)")
+def schedule_shift(staff_id, start, end):
+    """Schedule a shift for a staff."""
     if not staff_id:
-        print("\nNo staff id provided. Here are existing staff members:\n")
-        staff_members = Staff.query.all()
-        if not staff_members:
-            print("No staff records found. Use 'flask admin add-staff' first.")
-            return
-        for s in staff_members:
-            print(f"  ID {s.userId}  - {s.username} ({s.role})")
-        while True:
-            raw = input("\nEnter staff ID to schedule (or 'q' to quit): ").strip()
-            if raw.lower() == "q":
-                print("Cancelled.")
-                return
-            if raw.isdigit():
-                staff_id = int(raw)
-                staff = Staff.query.get(staff_id)
-                if not staff:
-                    print("Invalid staff ID — try again.")
-                    continue
-                break
-            print("Please enter a numeric staff ID.")
+        staff_id = click.prompt("Enter Staff ID", type=int)
+    if not start:
+        start = click.prompt("Enter start datetime (YYYY-MM-DDTHH:MM)")
+    if not end:
+        end = click.prompt("Enter end datetime (YYYY-MM-DDTHH:MM)")
 
-    staff = Staff.query.get(staff_id)
-    if not staff:
-        print(f"Staff with ID {staff_id} not found.")
-        return
+    start_dt = parse_dt(start)
+    end_dt = parse_dt(end)
 
-    # If both start and end passed -> do single non-interactive scheduling (but still confirm)
-    if start and end:
-        try:
-            start_dt = parse_dt(start)
-            end_dt = parse_dt(end)
-        except Exception as e:
-            print("Error: Invalid datetime format. Use YYYY-MM-DDTHH:MM (e.g. 2025-09-29T09:00).")
-            return
-
-        if start_dt >= end_dt:
-            print("Error: start must be before end.")
-            return
-
-        # Determine roster week start
-        if week_start:
-            try:
-                ws = parse_date(week_start)
-            except Exception:
-                print("Error: Invalid week-start format. Use YYYY-MM-DD.")
-                return
-        else:
-            ws = start_dt.date() - timedelta(days=start_dt.weekday())
-
-        try:
-            # create or get roster
-            roster = Roster.query.filter_by(weekStartDate=ws).first()
-            if not roster:
-                roster = Roster(weekStartDate=ws, weekEndDate=ws + timedelta(days=6))
-                db.session.add(roster)
-                db.session.commit()
-
-            # overlap check
-            overlapping = has_overlap(staff.userId, start_dt, end_dt)
-            if overlapping:
-                print("Warning: This shift overlaps an existing shift:")
-                print(f"  Existing Shift {overlapping.shiftId}: {overlapping.startTime} - {overlapping.endTime}")
-                confirm = input("Proceed and still create this shift? (y/N): ").strip().lower()
-                if confirm != "y":
-                    print("Aborted due to overlap.")
-                    return
-
-            # create shift within transaction
-            shift = Shift(rosterId=roster.rosterId, staffId=staff.userId, startTime=start_dt, endTime=end_dt)
-            try:
-                db.session.add(shift)
-                db.session.commit()
-                print(f"Scheduled shift {shift.shiftId} for staff {staff.username}: {start_dt} - {end_dt}")
-            except Exception as e:
-                db.session.rollback()
-                print("Error saving shift to database:", str(e))
-            return
-
-        except Exception as e:
-            print("Error during scheduling:", str(e))
-            return
-
-    # ------------------------------
-    # INTERACTIVE MULTI-SHIFT MODE
-    # ------------------------------
-    print("\nInteractive scheduling mode:\n")
-    print("Enter one or more shifts for staff:")
-    print(f"  Staff: {staff.userId} - {staff.username} ({staff.role})")
-    print("Date/time format examples:")
-    print("  Start/End : 2025-09-29T09:00  (YYYY-MM-DDTHH:MM)")
-    print("  Week-start : 2025-09-29       (YYYY-MM-DD)  - optional\n")
-
-    # Optionally get week-start first (applies only if you want a single roster for all shifts)
-    fixed_week = None
-    if week_start:
-        try:
-            fixed_week = parse_date(week_start)
-        except Exception:
-            print("Warning: invalid --week-start format ignored; continuing without fixed week.")
-
-    shifts_to_create = []
-    while True:
-        raw_start = input("Enter shift START datetime (or 'done' to finish): ").strip()
-        if raw_start.lower() == "done":
-            break
-        # parse start
-        try:
-            start_dt = parse_dt(raw_start)
-        except Exception:
-            print("Invalid start format. Use YYYY-MM-DDTHH:MM (e.g. 2025-09-29T09:00).")
-            continue
-
-        raw_end = input("Enter shift END datetime: ").strip()
-        try:
-            end_dt = parse_dt(raw_end)
-        except Exception:
-            print("Invalid end format. Use YYYY-MM-DDTHH:MM (e.g. 2025-09-29T17:00).")
-            continue
-
-        if start_dt >= end_dt:
-            print("Error: start must be before end. Try again.")
-            continue
-
-        # If user gave a fixed week, use it; otherwise compute roster week for this shift
-        if fixed_week:
-            ws = fixed_week
-        else:
-            ws = start_dt.date() - timedelta(days=start_dt.weekday())
-
-        # Check overlap
-        overlapping = has_overlap(staff.userId, start_dt, end_dt)
-        if overlapping:
-            print("Warning: This shift overlaps an existing shift:")
-            print(f"  Existing Shift {overlapping.shiftId}: {overlapping.startTime} - {overlapping.endTime}")
-            confirm = input("Proceed and still add this shift? (y/N): ").strip().lower()
-            if confirm != "y":
-                print("Skipping this shift.")
-                continue
-
-        # collect this shift (create later in DB transaction)
-        shifts_to_create.append((ws, start_dt, end_dt))
-        print("Shift added to the batch. Add more or type 'done' to finish.\n")
-
-    if not shifts_to_create:
-        print("No shifts entered. Cancelled.")
-        return
-
-    # Summary and confirmation
-    print("\nYou are about to create the following shifts:")
-    for idx, (ws, st, et) in enumerate(shifts_to_create, start=1):
-        print(f"  [{idx}] {st} -> {et}  (week start {ws})")
-    confirm = input("Confirm create these shifts? (y/N): ").strip().lower()
-    if confirm != "y":
-        print("Aborted. No shifts were created.")
-        return
-
-    # Create all shifts inside a transaction
-    try:
-        created = []
-        for ws, st, et in shifts_to_create:
-            # get or create roster for that week
-            roster = Roster.query.filter_by(weekStartDate=ws).first()
-            if not roster:
-                roster = Roster(weekStartDate=ws, weekEndDate=ws + timedelta(days=6))
-                db.session.add(roster)
-                db.session.flush()  # get roster.rosterId without commit
-
-            sh = Shift(rosterId=roster.rosterId, staffId=staff.userId, startTime=st, endTime=et)
-            db.session.add(sh)
-            created.append(sh)
-
+    # use current week's roster
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    roster = Roster.query.filter_by(weekStartDate=week_start).first()
+    if not roster:
+        roster = Roster(weekStartDate=week_start, weekEndDate=week_start + timedelta(days=6))
+        db.session.add(roster)
         db.session.commit()
-        print(f"Created {len(created)} shifts for staff {staff.username}.")
-        for sh in created:
-            print(f"  - Shift {sh.shiftId}: {sh.startTime} - {sh.endTime}")
 
-    except Exception as e:
-        db.session.rollback()
-        print("Error creating shifts; transaction rolled back. Error:", str(e))
+    new_shift = Shift(staffId=staff_id, startTime=start_dt, endTime=end_dt, rosterId=roster.rosterId)
+    db.session.add(new_shift)
+    db.session.commit()
+    print(f"✅ Shift scheduled for staff {staff_id}: {start_dt} → {end_dt}")
 
 @admin_cli.command("list-shifts")
 @with_appcontext
@@ -407,13 +205,12 @@ def list_shifts():
     """List all scheduled shifts."""
     shifts = Shift.query.all()
     if not shifts:
-        print("No shifts found.")
+        print("⚠️ No shifts found.")
         return
     for sh in shifts:
-        staff = Staff.query.get(sh.staffId)
-        staff_name = staff.username if staff else "UNASSIGNED"
-        print(f"Shift {sh.shiftId}: {staff_name} | {sh.startTime} - {sh.endTime}")
-
+        s = Staff.query.get(sh.staffId)
+        name = s.username if s else "Unknown"
+        print(f"Shift {sh.shiftId}: Staff {name} | {sh.startTime} - {sh.endTime}")
 
 @admin_cli.command("view-shift-report")
 @with_appcontext
@@ -519,19 +316,16 @@ def view_shift_report():
     print("\n" + final_summary)
     print("\nReport saved to database.")
 
-
-
 # ---------- STAFF COMMANDS ----------
 @staff_cli.command("view-roster")
 @with_appcontext
 @click.option("--week-start", default=None, help="Week start date (YYYY-MM-DD)")
 def view_roster(week_start):
-    """View combined roster for the week."""
     if week_start:
         ws = parse_date(week_start)
         roster = Roster.query.filter_by(weekStartDate=ws).first()
         if not roster:
-            print("No roster found for that week.")
+            print("⚠️ No roster found for that week.")
             return
         shifts = roster.getCombinedRoster()
     else:
@@ -539,37 +333,74 @@ def view_roster(week_start):
 
     for sh in shifts:
         staff = Staff.query.get(sh.staffId)
-        staff_name = staff.username if staff else "UNASSIGNED"
-        print(f"Shift {sh.shiftId}: {staff_name} | {sh.startTime} - {sh.endTime}")
-
+        name = staff.username if staff else "UNASSIGNED"
+        print(f"Shift {sh.shiftId}: {name} | {sh.startTime} - {sh.endTime}")
 
 @staff_cli.command("time-in")
 @with_appcontext
 @click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
-@click.option("--timestamp", default=None, help="Optional timestamp (YYYY-MM-DDTHH:MM)")
+@click.option("--timestamp", default=None)
 def time_in(staff_id, shift_id, timestamp):
-    """Record time in for a shift."""
     ts = datetime.fromisoformat(timestamp) if timestamp else datetime.utcnow()
     rec = AttendanceRecord.get_or_create(staff_id, shift_id)
     rec.markTimeIn(ts)
-    print(f"Staff {staff_id} timed in for shift {shift_id} at {ts}")
-
+    print(f"⏰ Staff {staff_id} timed in for shift {shift_id} at {ts}")
 
 @staff_cli.command("time-out")
 @with_appcontext
 @click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
-@click.option("--timestamp", default=None, help="Optional timestamp (YYYY-MM-DDTHH:MM)")
+@click.option("--timestamp", default=None)
 def time_out(staff_id, shift_id, timestamp):
-    """Record time out for a shift."""
     ts = datetime.fromisoformat(timestamp) if timestamp else datetime.utcnow()
     rec = AttendanceRecord.get_or_create(staff_id, shift_id)
     rec.markTimeOut(ts)
-    print(f"Staff {staff_id} timed out for shift {shift_id} at {ts}")
+    print(f"🏁 Staff {staff_id} timed out for shift {shift_id} at {ts}")
+
+@staff_cli.command("view-my-info")
+@with_appcontext
+@click.argument("staff_id", type=int)
+def view_my_info(staff_id):
+    staff = Staff.query.get(staff_id)
+    if not staff:
+        print("⚠️ Staff not found.")
+        return
+    print(f"👤 ID: {staff.userId}\nUsername: {staff.username}\nEmail: {staff.email}\nRole: {staff.role}")
+
+@staff_cli.command("view-my-shifts")
+@with_appcontext
+@click.argument("staff_id", type=int)
+def view_my_shifts(staff_id):
+    shifts = Shift.query.filter_by(staffId=staff_id).order_by(Shift.startTime).all()
+    if not shifts:
+        print("⚠️ No shifts found for this staff.")
+        return
+    for sh in shifts:
+        print(f"Shift {sh.shiftId}: {sh.startTime} - {sh.endTime}")
+
+
+# ---------- TEST COMMANDS ----------
+import sys
+import pytest
+
+test = AppGroup('test', help='Run application tests')
+
+@test.command("unit", help="Run all unit tests")
+def run_unit_tests():
+    sys.exit(pytest.main(["-k", "UserUnitTests"]))
+
+@test.command("integration", help="Run all integration tests")
+def run_integration_tests():
+    sys.exit(pytest.main(["-k", "IntegrationTests"]))
+
+@test.command("all", help="Run all tests")
+def run_all_tests():
+    sys.exit(pytest.main(["-v"]))
 
 
 # ---------- Register CLI groups ----------
 app.cli.add_command(system_cli)
 app.cli.add_command(admin_cli)
 app.cli.add_command(staff_cli)
+app.cli.add_command(test)
