@@ -64,8 +64,8 @@ def create_app(overrides: dict = None):
     # ----------------------------
     
     app.register_blueprint(index_views)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(staff_bp)
+    app.register_blueprint(auth_bp, url_prefix="/api/v1")
+    app.register_blueprint(staff_bp, url_prefix="/api/v1")
     app.register_blueprint(admin_bp)
 
     # ----------------------------

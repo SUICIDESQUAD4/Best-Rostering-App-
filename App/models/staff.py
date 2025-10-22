@@ -13,6 +13,10 @@ class Staff(User):
     }
 
     def to_dict(self):
-        d = super().to_dict()
-        d.update({"role": self.role})
-        return d
+        return {
+            "userId": self.userId,
+            "username": self.username,
+            "email": self.email,
+            "type": self.type,
+            # add any other fields you want exposed
+        }
