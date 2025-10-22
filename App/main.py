@@ -3,8 +3,8 @@ import os
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from App.models.user import User
 
+from App.models.user import User
 from App.database import init_db
 from App.config import load_config
 
@@ -16,8 +16,8 @@ from App.views.index import index_views
 
 def create_app(overrides: dict = None):
     """
-    Application factory for Rostering App.
-    Handles config, DB init, JWT setup, and blueprint registration.
+    Application factory for the Rostering App.
+    Handles configuration, DB initialization, JWT setup, and blueprint registration.
     """
     app = Flask(__name__, static_url_path="/static", template_folder="templates")
 
@@ -28,11 +28,11 @@ def create_app(overrides: dict = None):
     load_config(app, overrides)
     CORS(app)
 
-    # Initialize database
+    # Initialize Database
     init_db(app)
 
     # ----------------------------
-    # JWT Authentication Config
+    # JWT Configuration
     # ----------------------------
     app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
     app.config['JWT_ACCESS_COOKIE_NAME'] = 'access_token_cookie'
@@ -41,17 +41,21 @@ def create_app(overrides: dict = None):
 
     jwt = JWTManager(app)
 
+    from App.database import db
+
     @jwt.user_identity_loader
     def user_identity_lookup(identity):
-        try:
-            return str(identity.userId)
-        except Exception:
-            return str(identity)
-
-    from App.database import db
+        """
+        Defines what will be stored in the JWT as the identity.
+        We use the userId (int) as a string.
+        """
+        return str(identity)
 
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
+        """
+        Loads the User object from the database when a JWT is presented.
+        """
         identity = jwt_data["sub"]
         try:
             user_id = int(identity)
@@ -60,30 +64,23 @@ def create_app(overrides: dict = None):
         return db.session.get(User, user_id)
 
     # ----------------------------
-    # Blueprints
+    # Blueprint Registration
     # ----------------------------
-    
-    app.register_blueprint(index_views)
-    app.register_blueprint(auth_bp, url_prefix="/api/v1")
-    app.register_blueprint(staff_bp, url_prefix="/api/v1")
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(index_views)         # /
+    app.register_blueprint(auth_bp)            # /admin/login, /staff/login, etc.
+    app.register_blueprint(staff_bp, url_prefix="/staff")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
     # ----------------------------
-    # Page Routes (Protected)
+    # Protected Pages
     # ----------------------------
-    @app.route('/')
-    def index_page():
-        return render_template('index.html')
-
     @app.route('/admin/dashboard')
     @jwt_required()
     def admin_dashboard_page():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-
         if not user or user.type != "admin":
             return render_template('index.html'), 302
-
         return render_template('admin_dashboard.html', user=user)
 
     @app.route('/staff/dashboard')
@@ -91,10 +88,8 @@ def create_app(overrides: dict = None):
     def staff_dashboard_page():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-
         if not user or user.type != "staff":
             return render_template('index.html'), 302
-
         return render_template('staff_dashboard.html', user=user)
 
     # ----------------------------

@@ -82,6 +82,7 @@ class IntegrationTests(unittest.TestCase):
 
     def setUp(self):
         """Create demo users and one roster for integration tests."""
+        db.session.remove()
         db.drop_all()
         db.create_all()
 

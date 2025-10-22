@@ -3,37 +3,45 @@ from flask_jwt_extended import create_access_token
 from App.database import db
 from App.models.user import User
 
-def authenticate(username: str, password: str, role: str = None):
+def authenticate(username: str, password: str, expected_role: str = None):
     """
-    Authenticate a user (admin or staff) and return an access token if successful.
-    Accepts optional `role` to restrict login by user type.
-    Returns (token, user) if successful or None if failed.
+    Authenticate a user by username and password.
+    Optionally verify their expected role.
+    Returns a JWT token if valid, otherwise None.
     """
-    stmt = db.select(User).filter_by(username=username)
-    user = db.session.scalar(stmt)
+    user = db.session.scalar(db.select(User).filter_by(username=username))
 
-    # Check password and (if provided) role
-    if user and user.check_password(password):
-        if role and user.type != role:
-            # Role mismatch (e.g., staff trying to log in as admin)
-            return None
-        token = create_access_token(identity=user.userId)
-        return token, user
+    if not user:
+        return None
 
-    # Return single None for failed authentication (to pass tests)
-    return None
+    if not user.check_password(password):
+        return None
+
+    if expected_role and user.type != expected_role:
+        return None
+
+    token = create_access_token(identity=user.userId)
+    return token
 
 
-def create_user(username: str, password: str, email: str, role: str = None, user_type: str = "staff") -> User:
+def authenticate_user(username: str, password: str, expected_role: str):
     """
-    Create a new user (staff/admin).
+    More verbose authentication returning both token and user object.
+    Useful for views.
     """
-    existing = db.session.scalar(db.select(User).filter_by(username=username))
-    if existing:
-        raise ValueError("Username already exists")
+    user = db.session.scalar(db.select(User).filter_by(username=username))
+    if not user or not user.check_password(password):
+        return None, None
+    if expected_role and user.type != expected_role:
+        return None, None
 
-    new_user = User(username=username, email=email, type=user_type)
-    new_user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
-    return new_user
+    token = create_access_token(identity=user.userId)
+    return token, user
+
+
+def logout_user():
+    """
+    Stateless logout — in JWT this is usually handled on the client side
+    by clearing the token. For token blacklisting, you'd add logic here.
+    """
+    return True
