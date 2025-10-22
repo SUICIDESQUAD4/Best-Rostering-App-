@@ -14,3 +14,12 @@ class ShiftReport(db.Model):
         self.summary = f"Report covers {staff_count} staff and {shift_count} shifts."
         db.session.commit()
         return self.summary
+
+    def get_json(self):
+        return {
+            "reportId": self.reportId,
+            "rosterId": self.rosterId,
+            "weekStartDate": str(self.weekStartDate),
+            "weekEndDate": str(self.weekEndDate),
+            "summary": self.summary
+        }

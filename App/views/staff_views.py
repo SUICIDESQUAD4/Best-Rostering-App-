@@ -8,6 +8,17 @@ staff_bp = Blueprint('staff_bp', __name__, url_prefix="/staff")
 def is_staff():
     return current_user and getattr(current_user, "type", None) == "staff"
 
+@staff_bp.route('/login', methods=['POST'])
+def staff_login():
+    data = request.get_json()
+    token, user = authenticate_user(data['username'], data['password'], "staff")
+    if not token:
+        return jsonify({"error": "Invalid credentials"}), 401
+    resp = make_response(jsonify({"access_token": token, "userId": user.userId}))
+    resp.set_cookie("access_token_cookie", token, httponly=False)
+    return resp
+
+
 @staff_bp.route('/profile', methods=['GET'])
 @jwt_required()
 def view_profile():
