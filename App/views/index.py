@@ -1,17 +1,25 @@
-from flask import Blueprint, redirect, render_template, request, send_from_directory, jsonify
-from App.controllers import create_user, initialize
+# App/views/index.py
+
+from flask import Blueprint, render_template, redirect, url_for
+from flask_jwt_extended import jwt_required, current_user
 
 index_views = Blueprint('index_views', __name__, template_folder='../templates')
 
-@index_views.route('/', methods=['GET'])
+@index_views.route('/')
 def index_page():
     return render_template('index.html')
 
-@index_views.route('/init', methods=['GET'])
-def init():
-    initialize()
-    return jsonify(message='db initialized!')
+@index_views.route('/admin/dashboard')
+@jwt_required(optional=True)
+def admin_dashboard():
+    if not current_user or current_user.type != "admin":
+        return redirect(url_for('index_views.index_page'))
+    return render_template('admin_dashboard.html', user=current_user)
 
-@index_views.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({'status':'healthy'})
+@index_views.route('/staff/dashboard')
+@jwt_required(optional=True)
+def staff_dashboard():
+    if not current_user or current_user.type != "staff":
+        return redirect(url_for('index_views.index_page'))
+    return render_template('staff_dashboard.html', user=current_user)
+
