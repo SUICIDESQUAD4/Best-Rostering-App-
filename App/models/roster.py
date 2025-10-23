@@ -9,3 +9,11 @@ class Roster(db.Model):
     def getCombinedRoster(self):
         from App.models.shift import Shift
         return Shift.query.filter_by(rosterId=self.rosterId).all()
+    
+    def get_json(self):
+        return {
+            "rosterId": self.rosterId,
+            "weekStartDate": self.weekStartDate.isoformat(),
+            "weekEndDate": self.weekEndDate.isoformat(),
+            "shifts": [shift.get_json() for shift in self.getCombinedRoster()]
+        }
