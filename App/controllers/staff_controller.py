@@ -4,7 +4,7 @@ from App.models.staff import Staff
 from App.models.shift import Shift
 from App.models.roster import Roster
 from App.models.attendance import AttendanceRecord
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 def get_profile(staff_id):
     staff = Staff.query.get(staff_id)
@@ -16,7 +16,7 @@ def view_roster(week_start):
         roster = Roster.query.filter_by(weekStartDate=ws).first()
     else:
         today = date.today()
-        ws = today - datetime.timedelta(days=today.weekday())
+        ws = today - timedelta(days=today.weekday())
         roster = Roster.query.filter_by(weekStartDate=ws).first()
 
     if not roster:

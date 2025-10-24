@@ -14,3 +14,13 @@ class Shift(db.Model):
 
     def getDuration(self):
         return (self.endTime - self.startTime).seconds // 3600
+    
+    def get_json(self):
+        return {
+            "shiftId": self.shiftId,
+            "rosterId": self.rosterId,
+            "staffId": self.staffId,
+            "startTime": self.startTime.isoformat(),
+            "endTime": self.endTime.isoformat(),
+            "durationHours": self.getDuration()
+        }
