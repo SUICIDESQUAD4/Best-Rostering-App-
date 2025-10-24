@@ -128,7 +128,7 @@ def init_db():
 def rollback_db():
     """Rollback uncommitted database changes."""
     db.session.rollback()
-    print("🔁 Rolled back uncommitted changes.")
+    print("Rolled back uncommitted changes.")
 
 # ---------- ADMIN COMMANDS ----------
 @admin_cli.command("add-staff")
@@ -144,7 +144,7 @@ def add_staff():
     staff.set_password(password)
     db.session.add(staff)
     db.session.commit()
-    print(f"✅ Added staff {staff.username} with ID {staff.userId}")
+    print(f"Added staff {staff.username} with ID {staff.userId}")
 
 @admin_cli.command("delete-staff")
 @with_appcontext
@@ -152,18 +152,18 @@ def add_staff():
 def delete_staff(staff_id):
     staff = Staff.query.get(staff_id)
     if not staff:
-        print("⚠️ Staff not found.")
+        print("Staff not found.")
         return
     db.session.delete(staff)
     db.session.commit()
-    print(f"🗑️ Deleted staff with ID {staff_id}")
+    print(f"Deleted staff with ID {staff_id}")
 
 @admin_cli.command("list-staff")
 @with_appcontext
 def list_staff():
     staff_members = Staff.query.all()
     if not staff_members:
-        print("⚠️ No staff found.")
+        print("No staff found.")
         return
     for s in staff_members:
         print(f"{s.userId}: {s.username} ({s.role})")
@@ -205,7 +205,7 @@ def list_shifts():
     """List all scheduled shifts."""
     shifts = Shift.query.all()
     if not shifts:
-        print("⚠️ No shifts found.")
+        print("No shifts found.")
         return
     for sh in shifts:
         s = Staff.query.get(sh.staffId)
@@ -325,7 +325,7 @@ def view_roster(week_start):
         ws = parse_date(week_start)
         roster = Roster.query.filter_by(weekStartDate=ws).first()
         if not roster:
-            print("⚠️ No roster found for that week.")
+            print("No roster found for that week.")
             return
         shifts = roster.getCombinedRoster()
     else:
@@ -345,7 +345,7 @@ def time_in(staff_id, shift_id, timestamp):
     ts = datetime.fromisoformat(timestamp) if timestamp else datetime.utcnow()
     rec = AttendanceRecord.get_or_create(staff_id, shift_id)
     rec.markTimeIn(ts)
-    print(f"⏰ Staff {staff_id} timed in for shift {shift_id} at {ts}")
+    print(f"Staff {staff_id} timed in for shift {shift_id} at {ts}")
 
 @staff_cli.command("time-out")
 @with_appcontext
@@ -356,7 +356,7 @@ def time_out(staff_id, shift_id, timestamp):
     ts = datetime.fromisoformat(timestamp) if timestamp else datetime.utcnow()
     rec = AttendanceRecord.get_or_create(staff_id, shift_id)
     rec.markTimeOut(ts)
-    print(f"🏁 Staff {staff_id} timed out for shift {shift_id} at {ts}")
+    print(f"Staff {staff_id} timed out for shift {shift_id} at {ts}")
 
 @staff_cli.command("view-my-info")
 @with_appcontext
@@ -364,7 +364,7 @@ def time_out(staff_id, shift_id, timestamp):
 def view_my_info(staff_id):
     staff = Staff.query.get(staff_id)
     if not staff:
-        print("⚠️ Staff not found.")
+        print("Staff not found.")
         return
     print(f"👤 ID: {staff.userId}\nUsername: {staff.username}\nEmail: {staff.email}\nRole: {staff.role}")
 
@@ -374,7 +374,7 @@ def view_my_info(staff_id):
 def view_my_shifts(staff_id):
     shifts = Shift.query.filter_by(staffId=staff_id).order_by(Shift.startTime).all()
     if not shifts:
-        print("⚠️ No shifts found for this staff.")
+        print("No shifts found for this staff.")
         return
     for sh in shifts:
         print(f"Shift {sh.shiftId}: {sh.startTime} - {sh.endTime}")

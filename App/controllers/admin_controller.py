@@ -142,11 +142,3 @@ def generate_shift_report(roster_id):
     db.session.commit()
     
     return Response(final_summary, mimetype='text/plain')
-
-    # return {
-    #     "status": "success",
-    #     "rosterId": roster.rosterId,
-    #     "weekStartDate": str(roster.weekStartDate),
-    #     "weekEndDate": str(roster.weekEndDate),
-    #     "summary": final_summary
-    # }
