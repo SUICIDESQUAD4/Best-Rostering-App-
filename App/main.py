@@ -12,6 +12,7 @@ from App.config import load_config
 from App.views.auth_views import auth_bp
 from App.views.staff_views import staff_bp
 from App.views.admin_views import admin_bp
+from App.views.system_views import system_bp
 from App.views.index import index_views
 
 def create_app(overrides: dict = None):
@@ -70,6 +71,7 @@ def create_app(overrides: dict = None):
     app.register_blueprint(auth_bp)            # /admin/login, /staff/login, etc.
     app.register_blueprint(staff_bp, url_prefix="/staff")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(system_bp, url_prefix="/system")
 
     # ----------------------------
     # Protected Pages
