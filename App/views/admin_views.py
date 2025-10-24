@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from App.controllers import admin_controller
 
+
 admin_bp = Blueprint('admin_bp', __name__, url_prefix="/admin")
 
 def is_admin():
@@ -55,4 +56,4 @@ def generate_report(roster_id):
     if not is_admin():
         return jsonify({"error": "Admins only"}), 403
     report = admin_controller.generate_shift_report(roster_id)
-    return jsonify(report), 201
+    return report, 201
