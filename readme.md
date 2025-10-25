@@ -46,64 +46,52 @@ Pass configuration through environment variables on your hosting platform (e.g.,
 
 ---
 
-## Flask Commands
+## WSGI Commands
 
-The project uses `wsgi.py` as a utility script for CLI commands.
+The project uses `wsgi.py` as the main entry point and command utility.
 
 Commands are grouped into three categories:
-* `system` – Database setup and maintenance
+* `system` – Database setup and maintenance  
 * `admin` – Manage staff and schedule shifts
 * `staff` – Staff functions like viewing rosters and recording attendance
 
----
+### Running with WSGI
 
-## Running the Project
-
-### Development
-
+Development:
 ```bash
-$ flask run
+$ python wsgi.py
 ```
 
-### Production (Gunicorn)
-
+Production:
 ```bash
 $ gunicorn wsgi:app
 ```
 
 ---
 
-## Initializing the Database
+## Database Management 
 
-On a fresh setup, seed the database with demo data:
+Initialize database with demo data:
 
 ```bash
-$ flask system init-db
+$ python wsgi.py system init-db
 ```
 
 This seeds:
-
 * 2 Admins
-* 6 Staff
-* 5 Rosters (current + 4 past weeks)
-* Randomized Shifts & Attendance Records
+* 6 Staff 
+* 5 Rosters
+* Sample shifts and attendance
 
-Rollback any uncommitted changes:
-
+Rollback changes:
 ```bash
-$ flask system rollback-db
+$ python wsgi.py system rollback-db
 ```
 
----
-
-## Database Migrations
-
-Use Flask-Migrate if models change:
-
+Database migrations:
 ```bash
-$ flask db init
-$ flask db migrate
-$ flask db upgrade
+$ python wsgi.py db migrate
+$ python wsgi.py db upgrade
 ```
 
 ---
@@ -111,62 +99,51 @@ $ flask db upgrade
 ## CLI Usage
 
 ### System Commands
-
 ```bash
-$ flask system init-db        # Initialize DB with demo data
-$ flask system rollback-db    # Rollback uncommitted changes
+$ python wsgi.py system init-db
+$ python wsgi.py system rollback-db
 ```
 
 ### Admin Commands
-
 ```bash
-$ flask admin add-staff           # Add staff interactively
-$ flask admin delete-staff 2      # Delete staff by ID
-$ flask admin list-staff          # List all staff
-$ flask admin schedule-shift      # Interactive shift scheduling
-$ flask admin list-shifts         # List all shifts
-$ flask admin view-shift-report   # Select roster, generate report
+$ python wsgi.py admin add-staff
+$ python wsgi.py admin delete-staff 2
+$ python wsgi.py admin list-staff
+$ python wsgi.py admin schedule-shift
+$ python wsgi.py admin list-shifts
+$ python wsgi.py admin view-shift-report
 ```
 
 ### Staff Commands
-
 ```bash
-$ flask staff view-roster --week-start 2025-09-29
-$ flask staff time-in 2 5     # Staff 2 time-in for shift 5
-$ flask staff time-out 2 5    # Staff 2 time-out for shift 5
+$ python wsgi.py staff view-roster --week-start 2025-09-29
+$ python wsgi.py staff time-in 2 5
+$ python wsgi.py staff time-out 2 5
 ```
 
 ### Example Workflow
-
 ```bash
-flask system init-db
-flask admin list-staff
-flask admin schedule-shift
-flask staff view-roster --week-start 2025-09-29
-flask staff time-in 2 5
-flask staff time-out 2 5
-flask admin view-shift-report
+python wsgi.py system init-db
+python wsgi.py admin list-staff
+python wsgi.py admin schedule-shift 
+python wsgi.py staff view-roster --week-start 2025-09-29
+python wsgi.py staff time-in 2 5
+python wsgi.py admin view-shift-report
 ```
 
 ---
 
 ## Testing
 
-Currently, the app supports manual testing via CLI commands.
-
-Automated tests can be added under `App/test`.
-
-To run all tests:
-
+Run tests:
 ```bash
 $ pytest
 ```
 
-For coverage:
-
+Coverage:
 ```bash
+$ coverage run -m pytest
 $ coverage report
-$ coverage html
 ```
 
 ---
@@ -174,26 +151,17 @@ $ coverage html
 ## Troubleshooting
 
 ### Staff not found
-
-Add staff first:
-
 ```bash
-flask admin add-staff
+python wsgi.py admin add-staff
 ```
 
 ### No roster found
-
-Schedule shifts:
-
 ```bash
-flask admin schedule-shift
+python wsgi.py admin schedule-shift
 ```
 
 ### Database errors
-
-Rollback or reset DB:
-
 ```bash
-flask system rollback-db
-flask system init-db
+python wsgi.py system rollback-db
+python wsgi.py system init-db
 ```
